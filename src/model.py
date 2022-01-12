@@ -211,8 +211,8 @@ class UserDeviceAcessModel:
         if not user_document:
             self._latest_error = f'Username {user_name} does not exist'
             return -1
-# User Device access document contains username (String), email (String), role (String), accessList fields
-        # 
+        
+        # User Device access document contains username (String), email (String), role (String), accessList fields
         user_access = {'username': user_document.username, 'email': user_document.email, 'role': user_document.role,'device_access_list':access_list}
         user_obj_id = self._db.insert_single_data(UserDeviceAcessModel.USER_DEVICE_ACCESS_COLLECTION, user_access)
         return self.find_by_object_id(user_obj_id)
