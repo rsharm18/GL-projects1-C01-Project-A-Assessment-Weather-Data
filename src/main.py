@@ -1,13 +1,15 @@
-from typing import List
+from datetime import datetime
+from os import device_encoding
+from random import randint
+
 from model import (
     AccessValidator,
     DailyReportModel,
-    UserDeviceAcessModel,
-    UserModel,
     DeviceModel,
+    UserDeviceAccessModel,
+    UserModel,
     WeatherDataModel,
 )
-from datetime import datetime
 
 daily_report_model = DailyReportModel()
 
@@ -61,8 +63,6 @@ def execute(context_user):
     else:
         print(device_document)
 
-    user_device_access = UserDeviceAcessModel()
-
     device_id = "DT004"
     print(f"\nCan '{context_user}' read {device_id} device data?")
     device_document = device_coll.find_by_device_id(context_user, device_id)
@@ -70,6 +70,28 @@ def execute(context_user):
         print(f"Read access not allowed to {device_id} data")
     else:
         print(device_document)
+
+    device_id = "DH002"
+    wdata_coll = WeatherDataModel()
+    print(f"\nCan '{context_user}' read weather data for {device_id} device data?")
+    wdata_document = wdata_coll.find_by_device_id_and_timestamp(
+        context_user, device_id, datetime(2020, 12, 2, 13, 30, 0)
+    )
+    if wdata_document == -1:
+        print(wdata_coll._latest_error)
+    else:
+        print(wdata_document)
+
+    print(f"\nCan '{context_user}' add weather data for {device_id} device data?")
+    wdata_document = wdata_coll.insert(
+        context_user, device_id, 12, datetime(2022, 12, 4, 13, 30, 0)
+    )
+    if wdata_document == -1:
+        print(wdata_coll.latest_error)
+    else:
+        print(wdata_document)
+
+    device_id = "DT004"
 
     print(f"\nGenerate daily reports for {device_id} \n")
     from_date = "2020-12-05"
@@ -81,7 +103,7 @@ def execute(context_user):
 
 
 def generate_daily_reports(context_user, device_id, from_date, to_date):
-    result: List = daily_report_model.get_daily_report(
+    result = daily_report_model.get_daily_report(
         context_user, device_id, from_date, to_date
     )
     if result == -1:
@@ -128,7 +150,7 @@ execute(context_user)
 #     print(wdata_document)
 
 # print(" ############# Printing the device access location ##################")
-# user_device_access = UserDeviceAcessModel()
+# user_device_access = UserDeviceAccessModel()
 # uda_document = user_device_access.find_device_access_list_by_username("user_1")
 
 # print(uda_document)

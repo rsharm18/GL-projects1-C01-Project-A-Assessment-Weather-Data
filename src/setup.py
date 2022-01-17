@@ -1,13 +1,12 @@
-from itertools import groupby
+import json
 import random
-
-# Imports MongoClient for base level access to the local MongoDB
-from pymongo import MongoClient
 
 # Imports datetime class to create timestamp for weather data storage
 from datetime import datetime
+from itertools import groupby
 
-import json
+# Imports MongoClient for base level access to the local MongoDB
+from pymongo import MongoClient
 
 # Database host ip and port information
 HOST = "127.0.0.1"

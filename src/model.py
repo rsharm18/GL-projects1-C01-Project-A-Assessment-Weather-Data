@@ -1,10 +1,11 @@
 # Imports Database class from the project to provide basic functionality for database access
 from datetime import datetime
-from pymongo import results
-from database import Database
 
 # Imports ObjectId to convert to the correct format before querying in the db
 from bson.objectid import ObjectId
+from pymongo import results
+
+from database import Database
 
 
 class AccessValidator:
@@ -14,7 +15,7 @@ class AccessValidator:
         if AccessValidator.is_admin_user(context_user_name):
             return True
 
-        user_device_access_model = UserDeviceAcessModel()
+        user_device_access_model = UserDeviceAccessModel()
         user_device_access_collection = (
             user_device_access_model.check_device_access_for_username_device_id(
                 context_user_name, device_id
@@ -45,8 +46,21 @@ class AccessValidator:
             return True
 
         else:
-            device_model = DeviceModel()
-            return device_model.find_by_device_id(device_id)
+            user_device_access_model = UserDeviceAccessModel()
+            result = (
+                user_device_access_model.check_device_access_for_username_device_id(
+                    context_user, device_id
+                )
+            )
+            if result and result["device_access_list"]:
+                access_list = filter(
+                    lambda access_data: access_data["atype"] == "rw"
+                    and access_data["did"] == device_id,
+                    result["device_access_list"],
+                )
+                # print(f" device access list {list(access_list)}")
+                return len(list(access_list)) > 0
+            return result
 
 
 # User document contains username (String), email (String), and role (String) fields
@@ -56,7 +70,7 @@ class UserModel:
     def __init__(self):
         self._db = Database()
         self._latest_error = ""
-        self._user_device_access_model = UserDeviceAcessModel()
+        self._user_device_access_model = UserDeviceAccessModel()
         self._alist = []
 
     # Latest error is used to store the error string in case an issue. It's reset at the beginning of a new function call
@@ -161,7 +175,7 @@ class DeviceModel:
             return device_collection
 
         self._latest_error = (
-            f"user {context_user_name} does not have the read access to obj_id"
+            f"{context_user_name} does not have the read access to {obj_id}"
         )
         return -1
 
@@ -213,7 +227,7 @@ class WeatherDataModel:
     def find_by_device_id_and_timestamp(self, context_user_name, device_id, timestamp):
 
         if not AccessValidator.allow_device_read(context_user_name, device_id):
-            self._latest_error = f"{context_user_name} user does not have the Read (r) access to the device {device_id}"
+            self._latest_error = f"{context_user_name} does not have the Read (r) access to the device {device_id}"
             return -1
 
         key = {"device_id": device_id, "timestamp": timestamp}
@@ -230,7 +244,9 @@ class WeatherDataModel:
         ):
             return weather_data_collection
 
-        self._latest_error = f"Insert failed, Admin access required!"
+        self._latest_error = (
+            f"{context_user_name} does not have the read access to {obj_id}"
+        )
         return -1
 
     # Private function (starting with __) to be used as the base for all find functions
@@ -244,14 +260,15 @@ class WeatherDataModel:
     # If it doesn't already exist, it'll insert a new document and return the same to the caller
     def insert(self, context_user_name, device_id, value, timestamp):
         self._latest_error = ""
-        if not AccessValidator.allow_device_read(context_user_name, device_id):
+
+        if not AccessValidator.allow_device_update(context_user_name, device_id):
             self._latest_error = (
-                f"user {context_user_name} does not have the create access"
+                f"{context_user_name} does not have the create (rw) access"
             )
             return -1
 
         wdata_document = self.find_by_device_id_and_timestamp(
-            device_id, timestamp, context_user_name
+            context_user_name, device_id, timestamp
         )
 
         if wdata_document:
@@ -262,11 +279,11 @@ class WeatherDataModel:
         wdata_obj_id = self._db.insert_single_data(
             WeatherDataModel.WEATHER_DATA_COLLECTION, weather_data
         )
-        return self.find_by_object_id(wdata_obj_id)
+        return self.find_by_object_id(context_user_name, wdata_obj_id)
 
 
 # User Device access document contains username (String), email (String), role (String), accessList fields
-class UserDeviceAcessModel:
+class UserDeviceAccessModel:
     USER_DEVICE_ACCESS_COLLECTION = "users_device_access"
 
     def __init__(self):
@@ -293,16 +310,15 @@ class UserDeviceAcessModel:
         return self.__find(key)
 
     def check_device_access_for_username_device_id(self, context_user, device_id):
-        if AccessValidator.is_admin_user(context_user):
-            return True
-
+        # if AccessValidator.is_admin_user(context_user):
+        #     return True
         key = {"username": context_user, "device_access_list.did": device_id}
         return self.__find(key)
 
     # Private function (starting with __) to be used as the base for all find functions
     def __find(self, key):
         user_device_access_document = self._db.get_single_data(
-            UserDeviceAcessModel.USER_DEVICE_ACCESS_COLLECTION, key
+            UserDeviceAccessModel.USER_DEVICE_ACCESS_COLLECTION, key
         )
         return user_device_access_document
 
@@ -328,7 +344,7 @@ class UserDeviceAcessModel:
             "device_access_list": access_list,
         }
         user_obj_id = self._db.insert_single_data(
-            UserDeviceAcessModel.USER_DEVICE_ACCESS_COLLECTION, user_access
+            UserDeviceAccessModel.USER_DEVICE_ACCESS_COLLECTION, user_access
         )
         return self.find_by_object_id(user_obj_id)
 
@@ -374,7 +390,7 @@ class DailyReportModel:
 
         if not AccessValidator.allow_device_read(context_user, device_id):
             self._latest_error = (
-                f"{context_user} does not have the access to device {device_id}"
+                f"{context_user} does not have the read access to device {device_id}"
             )
             return -1
 
