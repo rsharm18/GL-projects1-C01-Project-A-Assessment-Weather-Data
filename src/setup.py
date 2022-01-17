@@ -103,7 +103,7 @@ with open(RELATIVE_CONFIG_PATH + DEVICE_COLLECTION + ".csv", "r") as device_fh:
 
 # users_device_access data import
 # User document contains username (String), email (String), and role (String) fields
-# Reads users.csv one line at a time, splits them into the data fields and inserts
+# Reads users_device_access.csv one line at a time, splits them into the data fields and inserts
 with open(
     RELATIVE_CONFIG_PATH + USER_DEVICE_ACCESS_COLLECTION + ".csv", "r"
 ) as user_fh:
@@ -125,7 +125,7 @@ with open(
         # This inserts the data item as a document in the user collection
         user_collection.insert_one(user_data)
 
-## Read from weather collection and calculate the average, minimum and maximum
+## Read from weather collection and calculate the average, minimum and maximum and insert data into daily_reports collection
 weather_data_collection = weather_dbh[WEATHER_DATA_COLLECTION]
 pipeline = [
     {

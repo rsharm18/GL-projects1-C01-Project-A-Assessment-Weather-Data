@@ -10,15 +10,15 @@ from database import Database
 
 class AccessValidator:
     @staticmethod
-    def allow_device_read(context_user_name, device_id):
+    def allow_device_read(context_user, device_id):
 
-        if AccessValidator.is_admin_user(context_user_name):
+        if AccessValidator.is_admin_user(context_user):
             return True
 
         user_device_access_model = UserDeviceAccessModel()
         user_device_access_collection = (
             user_device_access_model.check_device_access_for_username_device_id(
-                context_user_name, device_id
+                context_user, device_id
             )
         )
 
@@ -60,7 +60,8 @@ class AccessValidator:
                 )
                 # print(f" device access list {list(access_list)}")
                 return len(list(access_list)) > 0
-            return result
+
+        return False
 
 
 # User document contains username (String), email (String), and role (String) fields
@@ -153,30 +154,30 @@ class DeviceModel:
         return self._latest_error
 
     # Since device id should be unique in devices collection, this provides a way to fetch the device document based on the device id
-    def find_by_device_id(self, context_user_name, device_id):
+    def find_by_device_id(self, context_user, device_id):
 
-        if not AccessValidator.allow_device_read(context_user_name, device_id):
-            self._latest_error = f"{context_user_name} user does not have read access to device {device_id}"
+        if not AccessValidator.allow_device_read(context_user, device_id):
+            self._latest_error = (
+                f"{context_user} user does not have read access to device {device_id}"
+            )
             return -1
 
         key = {"device_id": device_id}
         return self.__find(key)
 
     # Finds a document based on the unique auto-generated MongoDB object id
-    def find_by_object_id(self, context_user_name, obj_id):
+    def find_by_object_id(self, context_user, obj_id):
 
         key = {"_id": ObjectId(obj_id)}
 
         device_collection = self.__find(key)
 
         if device_collection and AccessValidator.allow_device_read(
-            context_user_name, device_collection["device_id"]
+            context_user, device_collection["device_id"]
         ):
             return device_collection
 
-        self._latest_error = (
-            f"{context_user_name} does not have the read access to {obj_id}"
-        )
+        self._latest_error = f"{context_user} does not have the read access to {obj_id}"
         return -1
 
     # Private function (starting with __) to be used as the base for all find functions
@@ -186,14 +187,14 @@ class DeviceModel:
 
     # This first checks if a device already exists with that device id. If it does, it populates latest_error and returns -1
     # If a device doesn't already exist, it'll insert a new document and return the same to the caller
-    def insert(self, context_user_name, device_id, desc, type, manufacturer):
+    def insert(self, context_user, device_id, desc, type, manufacturer):
         # print("insert - user access allowed ? ", self.access_validator.allow_device_read(user_name))
         self._latest_error = ""
-        if not AccessValidator.allow_create(context_user_name):
+        if not AccessValidator.allow_create(context_user):
             self._latest_error = f"Insert failed, Admin access required!"
             return -1
 
-        device_document = self.find_by_device_id(context_user_name, device_id)
+        device_document = self.find_by_device_id(context_user, device_id)
         if device_document and device_document != -1:
             self._latest_error = f"Device id {device_id} already exists"
             return device_document
@@ -207,7 +208,7 @@ class DeviceModel:
         device_obj_id = self._db.insert_single_data(
             DeviceModel.DEVICE_COLLECTION, device_data
         )
-        return self.find_by_object_id(context_user_name, device_obj_id)
+        return self.find_by_object_id(context_user, device_obj_id)
 
 
 # Weather data document contains device_id (String), value (Integer), and timestamp (Date) fields
@@ -224,29 +225,27 @@ class WeatherDataModel:
         return self._latest_error
 
     # Since device id and timestamp should be unique in weather_data collection, this provides a way to fetch the data document based on the device id and timestamp
-    def find_by_device_id_and_timestamp(self, context_user_name, device_id, timestamp):
+    def find_by_device_id_and_timestamp(self, context_user, device_id, timestamp):
 
-        if not AccessValidator.allow_device_read(context_user_name, device_id):
-            self._latest_error = f"{context_user_name} does not have the Read (r) access to the device {device_id}"
+        if not AccessValidator.allow_device_read(context_user, device_id):
+            self._latest_error = f"{context_user} does not have the Read (r) access to the device {device_id}"
             return -1
 
         key = {"device_id": device_id, "timestamp": timestamp}
         return self.__find(key)
 
     # Finds a document based on the unique auto-generated MongoDB object id
-    def find_by_object_id(self, context_user_name, obj_id):
+    def find_by_object_id(self, context_user, obj_id):
         # print("weather - find_by_object_id - user access allowed ? ", self.access_validator.allow_device_read(user_name))
         key = {"_id": ObjectId(obj_id)}
         weather_data_collection = self.__find(key)
 
         if weather_data_collection and AccessValidator.allow_device_read(
-            context_user_name, weather_data_collection["device_id"]
+            context_user, weather_data_collection["device_id"]
         ):
             return weather_data_collection
 
-        self._latest_error = (
-            f"{context_user_name} does not have the read access to {obj_id}"
-        )
+        self._latest_error = f"{context_user} does not have the read access to {obj_id}"
         return -1
 
     # Private function (starting with __) to be used as the base for all find functions
@@ -258,17 +257,15 @@ class WeatherDataModel:
 
     # This first checks if a data item already exists at a particular timestamp for a device id. If it does, it populates latest_error and returns -1.
     # If it doesn't already exist, it'll insert a new document and return the same to the caller
-    def insert(self, context_user_name, device_id, value, timestamp):
+    def insert(self, context_user, device_id, value, timestamp):
         self._latest_error = ""
 
-        if not AccessValidator.allow_device_update(context_user_name, device_id):
-            self._latest_error = (
-                f"{context_user_name} does not have the create (rw) access"
-            )
+        if not AccessValidator.allow_device_update(context_user, device_id):
+            self._latest_error = f"{context_user} does not have the create (rw) access"
             return -1
 
         wdata_document = self.find_by_device_id_and_timestamp(
-            context_user_name, device_id, timestamp
+            context_user, device_id, timestamp
         )
 
         if wdata_document:
@@ -279,7 +276,7 @@ class WeatherDataModel:
         wdata_obj_id = self._db.insert_single_data(
             WeatherDataModel.WEATHER_DATA_COLLECTION, weather_data
         )
-        return self.find_by_object_id(context_user_name, wdata_obj_id)
+        return self.find_by_object_id(context_user, wdata_obj_id)
 
 
 # User Device access document contains username (String), email (String), role (String), accessList fields
@@ -370,12 +367,6 @@ class DailyReportModel:
         }
         daily_report_document = self._db.insert_single_data(
             DailyReportModel.DAILY_REPORTS_COLLECTION, new_daily_report_document
-        )
-        return daily_report_document
-
-    def __find(self, key):
-        daily_report_document = self._db.get_data(
-            DailyReportModel.DAILY_REPORTS_COLLECTION, key
         )
         return daily_report_document
 
