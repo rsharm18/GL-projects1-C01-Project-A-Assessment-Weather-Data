@@ -1,3 +1,6 @@
+
+############################## START #################### 
+
 ##############  ADMIN ACCESS Validation ################
 
 context user: admin
@@ -6,33 +9,33 @@ Does 'admin' have admin access?
 True
 
 Is username based query possible for 'admin'?
-{'_id': ObjectId('61e59eadfba659051ff5e424'), 'username': 'admin', 'email': 'admin@example.com', 'role': 'admin', 'alist': []}
+{'_id': ObjectId('61e5a7fa4ae137480ed1b2d1'), 'username': 'admin', 'email': 'admin@example.com', 'role': 'admin', 'alist': []}
 
 Can 'admin' add a new user?
-New User added : {'_id': ObjectId('61e59eae7700146aaede2315'), 'username': 'user_4', 'email': 'user_4@example.com', 'role': 'default', 'alist': []}
+New User added : {'_id': ObjectId('61e5a7fc8242736411ec96a2'), 'username': 'user_4', 'email': 'user_4@example.com', 'role': 'default', 'alist': []}
 
 Can 'admin' access device DT004?
-{'_id': ObjectId('61e59eadfba659051ff5e42a'), 'device_id': 'DT004', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
+{'_id': ObjectId('61e5a7fa4ae137480ed1b2d7'), 'device_id': 'DT004', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
 
 Can 'admin' create device DT801 ?
-{'_id': ObjectId('61e59eaf7700146aaede2326'), 'device_id': 'DT801', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
+{'_id': ObjectId('61e5a7fc8242736411ec96b3'), 'device_id': 'DT801', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
 
 Can 'admin' read DT004 device data?
-{'_id': ObjectId('61e59eadfba659051ff5e42a'), 'device_id': 'DT004', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
+{'_id': ObjectId('61e5a7fa4ae137480ed1b2d7'), 'device_id': 'DT004', 'desc': 'Temperature Sensor', 'type': 'Temperature', 'manufacturer': 'Acme'}
 
 Can 'admin' read weather data for DH002 device data?
-{'_id': ObjectId('61e59eadfba659051ff5e726'), 'device_id': 'DH002', 'value': 45, 'timestamp': datetime.datetime(2020, 12, 2, 13, 30)}
+{'_id': ObjectId('61e5a7fb4ae137480ed1b5d3'), 'device_id': 'DH002', 'value': 45, 'timestamp': datetime.datetime(2020, 12, 2, 13, 30)}
 
 Can 'admin' add weather data for DH002 device data?
-{'_id': ObjectId('61e59eaf7700146aaede2332'), 'device_id': 'DH002', 'value': 12, 'timestamp': datetime.datetime(2022, 12, 4, 13, 30)}
+{'_id': ObjectId('61e5a7fc8242736411ec96bf'), 'device_id': 'DH002', 'value': 12, 'timestamp': datetime.datetime(2022, 12, 11, 13, 30)}
 
 Generate daily reports for DT004 
 
 Date Range : 2020-12-05 00:00:00 - 2020-12-05 00:00:00 : Get daily report for one day
-[{'_id': ObjectId('61e59eaefba659051ff5e90a'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 5, 0, 0), 'avg_value': 23.125, 'min_value': 18, 'max_value': 18}]
+[{'_id': ObjectId('61e5a7fb4ae137480ed1b7b6'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 5, 0, 0), 'avg_value': 22.375, 'min_value': 18, 'max_value': 18}]
 
 Date Range : 2020-12-03 00:00:00 - 2020-12-05 00:00:00 : Get daily report for multiple days
-[{'_id': ObjectId('61e59eaefba659051ff5e8e7'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 3, 0, 0), 'avg_value': 23.625, 'min_value': 20, 'max_value': 20}, {'_id': ObjectId('61e59eaefba659051ff5e8f4'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 4, 0, 0), 'avg_value': 23.208333333333332, 'min_value': 20, 'max_value': 20}, {'_id': ObjectId('61e59eaefba659051ff5e90a'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 5, 0, 0), 'avg_value': 23.125, 'min_value': 18, 'max_value': 18}]
+[{'_id': ObjectId('61e5a7fb4ae137480ed1b793'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 3, 0, 0), 'avg_value': 23.75, 'min_value': 21, 'max_value': 21}, {'_id': ObjectId('61e5a7fb4ae137480ed1b7a2'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 4, 0, 0), 'avg_value': 23.958333333333332, 'min_value': 19, 'max_value': 19}, {'_id': ObjectId('61e5a7fb4ae137480ed1b7b6'), 'device_id': 'DT004', 'date': datetime.datetime(2020, 12, 5, 0, 0), 'avg_value': 22.375, 'min_value': 18, 'max_value': 18}]
 
 ############## NON ADMIN ACCESS Validation ################
 
@@ -57,7 +60,7 @@ Can 'user_1' read DT004 device data?
 Read access not allowed to DT004 data
 
 Can 'user_1' read weather data for DH002 device data?
-{'_id': ObjectId('61e59eadfba659051ff5e726'), 'device_id': 'DH002', 'value': 45, 'timestamp': datetime.datetime(2020, 12, 2, 13, 30)}
+{'_id': ObjectId('61e5a7fb4ae137480ed1b5d3'), 'device_id': 'DH002', 'value': 45, 'timestamp': datetime.datetime(2020, 12, 2, 13, 30)}
 
 Can 'user_1' add weather data for DH002 device data?
 user_1 does not have the create (rw) access
@@ -67,3 +70,6 @@ Generate daily reports for DT004
 user_1 does not have the read access to device DT004
 
 user_1 does not have the read access to device DT004
+
+############################## END #################### 
+
