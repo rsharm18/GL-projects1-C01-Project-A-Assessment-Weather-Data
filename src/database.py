@@ -30,7 +30,6 @@ class Database:
         db_collection = self._db[collection]
         try:
             result = db_collection.aggregate(query)
-            print("Query successful")
             return result
         except Exception as e:
             print("An exception occurred ::", e)

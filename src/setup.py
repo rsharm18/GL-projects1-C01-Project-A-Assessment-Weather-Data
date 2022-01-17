@@ -40,11 +40,11 @@ with open(RELATIVE_CONFIG_PATH + USER_COLLECTION + ".csv", "r") as user_fh:
         user_row = user_row.rstrip()
         # print(user_row.split(','))
         if user_row:
-            (username, email, role, alist) = user_row.split(",", maxsplit=3)
+            (username, email, role) = user_row.split(",", maxsplit=3)
 
         user_data = {"username": username, "email": email, "role": role}
 
-        # print("\n user_data ",user_data)
+        # print("\nuser_data ",user_data)
         # This creates and return a pointer to the users collection
         user_collection = weather_dbh[USER_COLLECTION]
 
@@ -110,7 +110,6 @@ with open(
 ) as user_fh:
     for user_row in user_fh:
         user_row = user_row.rstrip()
-        print(user_row.split(","))
         if user_row:
             (username, email, role, alist) = user_row.split(",", maxsplit=3)
 
@@ -121,7 +120,6 @@ with open(
             "device_access_list": json.loads(alist),
         }
 
-        print("\n user_data ", user_data)
         # This creates and return a pointer to the users collection
         user_collection = weather_dbh[USER_DEVICE_ACCESS_COLLECTION]
 

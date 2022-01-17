@@ -29,7 +29,7 @@ class AccessValidator:
     @staticmethod
     def is_admin_user(context_user):
         user_coll = UserModel()
-        user = user_coll.find_by_username(context_user)
+        user = user_coll.find_by_username(context_user, context_user, True)
         if user and user["role"] == "admin":
             return True
         else:
@@ -56,6 +56,8 @@ class UserModel:
     def __init__(self):
         self._db = Database()
         self._latest_error = ""
+        self._user_device_access_model = UserDeviceAcessModel()
+        self._alist = []
 
     # Latest error is used to store the error string in case an issue. It's reset at the beginning of a new function call
     @property
@@ -63,35 +65,64 @@ class UserModel:
         return self._latest_error
 
     # Since username should be unique in users collection, this provides a way to fetch the user document based on the username
-    def find_by_username(self, username):
+    def find_by_username(self, context_user, username, skip_admin_check=False):
+        if not skip_admin_check and not AccessValidator.is_admin_user(context_user):
+            self._latest_error = "Query failed, Admin access required!"
+            return -1
+
         key = {"username": username}
         return self.__find(key)
 
     # Finds a document based on the unique auto-generated MongoDB object id
-    def find_by_object_id(self, obj_id):
+    def find_by_object_id(self, context_user, obj_id):
+        if not AccessValidator.is_admin_user(context_user):
+            self._latest_error = "Query failed, Admin access required!"
+            return -1
+
         key = {"_id": ObjectId(obj_id)}
         return self.__find(key)
 
     # Private function (starting with __) to be used as the base for all find functions
     def __find(self, key):
         user_document = self._db.get_single_data(UserModel.USER_COLLECTION, key)
+
+        if user_document:
+            ## append user access list to user data
+            user_device_access_coll = (
+                self._user_device_access_model.find_device_access_list_by_username(
+                    user_document["username"]
+                )
+            )
+            user_document["alist"] = (
+                user_device_access_coll["device_access_list"]
+                if user_device_access_coll
+                else []
+            )
         return user_document
 
     # This first checks if a user already exists with that username. If it does, it populates latest_error and returns -1
     # If a user doesn't already exist, it'll insert a new document and return the same to the caller
-    def insert(self, context_user, new_user_name, email, role):
+    def insert(self, context_user, new_user_name, email, role, alist=[]):
         self._latest_error = ""
         if not AccessValidator.allow_create(context_user):
-            self._latest_error = f"Create user access is not granted to {context_user}"
+            self._latest_error = f"Insert failed, Admin access required!"
             return -1
-        user_document = self.find_by_username(new_user_name)
+
+        user_document = self.find_by_username(context_user, new_user_name)
         if user_document:
             self._latest_error = f"Username {new_user_name} already exists"
             return -1
 
         user_data = {"username": new_user_name, "email": email, "role": role}
         user_obj_id = self._db.insert_single_data(UserModel.USER_COLLECTION, user_data)
-        return self.find_by_object_id(user_obj_id)
+
+        user_document = self.find_by_object_id(context_user, user_obj_id)
+
+        # add the new user to device access list
+        self._user_device_access_model.insert(
+            context_user, user_document["username"], alist
+        )
+        return user_document
 
 
 # Device document contains device_id (String), desc (String), type (String - temperature/humidity) and manufacturer (String) fields
@@ -111,7 +142,7 @@ class DeviceModel:
     def find_by_device_id(self, context_user_name, device_id):
 
         if not AccessValidator.allow_device_read(context_user_name, device_id):
-            self._latest_error = f" {context_user_name} user does not have read access to device {device_id}"
+            self._latest_error = f"{context_user_name} user does not have read access to device {device_id}"
             return -1
 
         key = {"device_id": device_id}
@@ -122,7 +153,7 @@ class DeviceModel:
 
         key = {"_id": ObjectId(obj_id)}
 
-        device_collection = self.__find(key, context_user_name)
+        device_collection = self.__find(key)
 
         if device_collection and AccessValidator.allow_device_read(
             context_user_name, device_collection["device_id"]
@@ -145,13 +176,11 @@ class DeviceModel:
         # print("insert - user access allowed ? ", self.access_validator.allow_device_read(user_name))
         self._latest_error = ""
         if not AccessValidator.allow_create(context_user_name):
-            self._latest_error = (
-                f"user {context_user_name} does not have the create device permissioon"
-            )
+            self._latest_error = f"Insert failed, Admin access required!"
             return -1
 
-        device_document = self.find_by_device_id(device_id, context_user_name)
-        if device_document:
+        device_document = self.find_by_device_id(context_user_name, device_id)
+        if device_document and device_document != -1:
             self._latest_error = f"Device id {device_id} already exists"
             return device_document
 
@@ -164,7 +193,7 @@ class DeviceModel:
         device_obj_id = self._db.insert_single_data(
             DeviceModel.DEVICE_COLLECTION, device_data
         )
-        return self.find_by_object_id(device_obj_id, context_user_name)
+        return self.find_by_object_id(context_user_name, device_obj_id)
 
 
 # Weather data document contains device_id (String), value (Integer), and timestamp (Date) fields
@@ -184,7 +213,7 @@ class WeatherDataModel:
     def find_by_device_id_and_timestamp(self, context_user_name, device_id, timestamp):
 
         if not AccessValidator.allow_device_read(context_user_name, device_id):
-            self._latest_error = f" {context_user_name} user does not have the Read (r) access to the device {device_id}"
+            self._latest_error = f"{context_user_name} user does not have the Read (r) access to the device {device_id}"
             return -1
 
         key = {"device_id": device_id, "timestamp": timestamp}
@@ -201,9 +230,7 @@ class WeatherDataModel:
         ):
             return weather_data_collection
 
-        self._latest_error = (
-            f"user {context_user_name} does not have the read access to {obj_id}"
-        )
+        self._latest_error = f"Insert failed, Admin access required!"
         return -1
 
     # Private function (starting with __) to be used as the base for all find functions
@@ -245,8 +272,6 @@ class UserDeviceAcessModel:
     def __init__(self):
         self._db = Database()
         self._latest_error = ""
-        self.userModel = UserModel()
-        # self.device_access_list = []
 
     # Latest error is used to store the error string in case an issue. It's reset at the beginning of a new function call
     @property
@@ -276,10 +301,10 @@ class UserDeviceAcessModel:
 
     # Private function (starting with __) to be used as the base for all find functions
     def __find(self, key):
-        user_document = self._db.get_single_data(
+        user_device_access_document = self._db.get_single_data(
             UserDeviceAcessModel.USER_DEVICE_ACCESS_COLLECTION, key
         )
-        return user_document
+        return user_device_access_document
 
     # This first checks if a user exists with that username. If it does not, it populates latest_error and returns -1
     # If a user already exists, it'll insert a new/update the existing document and return the same to the caller
@@ -289,16 +314,17 @@ class UserDeviceAcessModel:
             self._latest_error = f"user {context_user} does not have the create access"
             return -1
 
-        user_document = self.userModel.find_by_username(user_name)
+        userModel = UserModel()
+        user_document = userModel.find_by_username(context_user, user_name)
         if not user_document:
             self._latest_error = f"Username {user_name} does not exist"
             return -1
 
         # User Device access document contains username (String), email (String), role (String), accessList fields
         user_access = {
-            "username": user_document.username,
-            "email": user_document.email,
-            "role": user_document.role,
+            "username": user_document["username"],
+            "email": user_document["email"],
+            "role": user_document["role"],
             "device_access_list": access_list,
         }
         user_obj_id = self._db.insert_single_data(
@@ -339,9 +365,12 @@ class DailyReportModel:
 
     def get_daily_report(self, context_user, device_id, from_date, to_date):
 
-        print(f"fromDate {from_date}, to_date {to_date}")
         from_date = datetime.fromisoformat(from_date)
         to_date = datetime.fromisoformat(to_date)
+
+        if from_date > to_date:
+            self._latest_error = "Invalid Date Range. From Date cannot be after To date"
+            return -1
 
         if not AccessValidator.allow_device_read(context_user, device_id):
             self._latest_error = (
@@ -359,7 +388,12 @@ class DailyReportModel:
         ]
         result_cursor = self._db.aggregate_data(self.DAILY_REPORTS_COLLECTION, query)
         result = []
+        num_of_days = to_date - from_date
+        print(
+            f"Date Range : {from_date} - {to_date} : Get daily report for {'multiple days' if num_of_days.days > 0 else 'one day'}"
+        )
         for doc in result_cursor:
             result.append(doc)
 
+        print(result)
         return result
